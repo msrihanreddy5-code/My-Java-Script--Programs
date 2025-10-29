@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Budget Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Budget Tracker</h1>
+    <form id="entry-form">
+      <input type="number" id="amount" placeholder="Amount" required>
+      <input type="text" id="category" placeholder="Category" required>
+      <select id="type">
+        <option value="income">Income</option>
+        <option value="expense">Expense</option>
+      </select>
+      <button type="submit">Add Entry</button>
+      <button type="button" id="undo">Undo</button>
+    </form>
+    <div id="alert"></div>
+    <div>
+      <label>Show Chart:</label>
+      <select id="chart-type">
+        <option value="weekly">Weekly</option>
+        <option value="monthly">Monthly</option>
+      </select>
+    </div>
+    <canvas id="chart" width="400" height="200"></canvas>
+    <ul id="entries"></ul>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+body {
+  font-family: Arial, sans-serif;
+  background: #f7f7f7;
+}
+
+.container {
+  max-width: 450px;
+  margin: 30px auto;
+  background: #fff;
+  padding: 25px;
+  border-radius: 9px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.11);
+}
+
+h1 {
+  text-align: center;
+}
+
+form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+#alert {
+  color: red;
+  font-weight: bold;
+  margin: 12px 0;
+  min-height: 20px;
+}
+
+#entries {
+  margin-top: 22px;
+  list-style: none;
+  padding: 0;
+}
+
+#entries li {
+  padding: 7px 0;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+}
+
+#entries .income { color: green; }
+#entries .expense { color: crimson; }
+const form = document.getElementById('entry-form');
+const entriesList = document.getElementById('entries');
+const alertBox = document.getElementById('alert');
+const chartType = document.getElementById('chart-type');
+const undoBtn = document.getElementById('undo');
+
+let entries = JSON.parse(localStorage.getItem('budgetEntries') || '[]');
+let budget = 500; // Set your budget limit
+
+function saveEntries() {
+  localStorage.setItem('budgetEntries', JSON.stringify(entries));
+}
+
+function renderEntries() {
+  entriesList.innerHTML = '';
+  entries.slice().reverse().forEach((entry, idx) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span class="${entry.type}">${entry.type === 'income' ? '+' : '-'}$${entry.amount} (${entry.category})</span>
+      <span>${new Date(entry.date).toLocaleDateString()}</span>
+    `;
+    entriesList.appendChild(li);
+  });
+}
+
+function getTotalExpense() {
+  return entries.filter(e => e.type === 'expense').reduce((t, e) => t + Number(e.amount), 0);
+}
+
+function showAlertIfOverBudget() {
+  const expense = getTotalExpense();
+  if (expense > budget) {
+    alertBox.textContent = `Alert: You are over budget! ($${expense} > $${budget})`;
+  } else {
+    alertBox.textContent = '';
+  }
+}
+
+function addEntry(amount, category, type) {
+  entries.push({
+    amount: Number(amount),
+    category,
+    type,
+    date: new Date().toISOString()
+  });
+  saveEntries();
+  renderEntries();
+  showAlertIfOverBudget();
+  renderChart();
+}
+
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  const amount = form.amount.value;
+  const category = form.category.value;
+  const type = form.type.value;
+  if (amount <= 0 || !category) return;
+  addEntry(amount, category, type);
+  form.amount.value = '';
+  form.category.value = '';
+});
+
+undoBtn.addEventListener('click', () => {
+  if (entries.length === 0) return;
+  entries.pop();
+  saveEntries();
+  renderEntries();
+  showAlertIfOverBudget();
+  renderChart();
+});
+
+// --- Chart code ---
+let chart;
+function renderChart() {
+  const type = chartType.value;
+  const now = new Date();
+  let labels = [], dataIncome = [], dataExpense = [];
+  if (type === 'weekly') {
+    // Last 7 days
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      labels.push(d.toLocaleDateString().slice(0,5));
+      let income = 0, expense = 0;
+      entries.forEach(e => {
+        const ed = new Date(e.date);
+        if (ed.toDateString() === d.toDateString()) {
+          if (e.type === 'income') income += Number(e.amount);
+          else expense += Number(e.amount);
+        }
+      });
+      dataIncome.push(income);
+      dataExpense.push(expense);
+    }
+  } else {
+    // Last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      labels.push(d.toLocaleString('default', { month: 'short' }));
+      let income = 0, expense = 0;
+      entries.forEach(e => {
+        const ed = new Date(e.date);
+        if (ed.getFullYear() === d.getFullYear() && ed.getMonth() === d.getMonth()) {
+          if (e.type === 'income') income += Number(e.amount);
+          else expense += Number(e.amount);
+        }
+      });
+      dataIncome.push(income);
+      dataExpense.push(expense);
+    }
+  }
+
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById('chart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Income', data: dataIncome, backgroundColor: 'rgba(0,200,0,0.3)' },
+        { label: 'Expense', data: dataExpense, backgroundColor: 'rgba(200,0,0,0.3)' }
+      ]
+    },
+    options: {
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+
+chartType.addEventListener('change', renderChart);
+
+renderEntries();
+showAlertIfOverBudget();
+renderChart();

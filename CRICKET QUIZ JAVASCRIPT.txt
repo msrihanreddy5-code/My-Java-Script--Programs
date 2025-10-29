@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cricket Quiz</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="quiz-container" id="quiz">
+    <h1>Cricket Quiz</h1>
+    <div id="progress">Question 1 of 5</div>
+    <div id="points">Score: 0</div>
+    <div id="question"></div>
+    <ul id="choices"></ul>
+    <button id="nextBtn" disabled>Next</button>
+    <div id="result"></div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
+
+body {
+font-family: Arial, sans-serif;
+background: #e6ffe6;
+display: flex;
+justify-content: center;
+align-items: center;
+height: 100vh;
+margin: 0;
+}
+
+.quiz-container {
+background: #fff;
+padding: 32px 40px;
+border-radius: 16px;
+box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+width: 400px;
+text-align: center;
+transition: all 0.3s ease;
+}
+
+h1 {
+color: #008c2e;
+margin-bottom: 16px;
+}
+
+#progress, #points {
+font-weight: bold;
+margin-bottom: 12px;
+}
+
+#question {
+font-size: 1.2em;
+margin-bottom: 16px;
+}
+
+#choices {
+list-style: none;
+padding: 0;
+margin: 0 0 24px 0;
+}
+
+#choices li {
+margin-bottom: 12px;
+}
+
+.choice-btn {
+width: 100%;
+padding: 10px;
+background: #c6f5d6;
+border: 2px solid #008c2e;
+border-radius: 8px;
+cursor: pointer;
+transition: all 0.3s ease;
+}
+
+.choice-btn:hover {
+background: #67e384;
+}
+
+.choice-btn.correct {
+background: #4CAF50 !important;
+color: #fff;
+}
+
+.choice-btn.wrong {
+background: #f44336 !important;
+color: #fff;
+}
+
+#nextBtn {
+padding: 10px 32px;
+font-size: 1em;
+border: none;
+background: #008c2e;
+color: #fff;
+border-radius: 8px;
+cursor: pointer;
+transition: background 0.2s;
+}
+
+#nextBtn:disabled {
+background: #ccc;
+cursor: not-allowed;
+}
+
+#result {
+margin-top: 24px;
+font-size: 1.15em;
+font-weight: bold;
+transition: all 0.3s ease;
+}
+
+const quizData = [
+    {
+        question: "Who won the ICC Cricket World Cup in 2019?",
+        choices: ["Australia", "New Zealand", "England", "India"],
+        answer: 2
+    },
+    {
+        question: "Which bowler has the most wickets in Test cricket?",
+        choices: ["Shane Warne", "Muttiah Muralitharan", "James Anderson", "Anil Kumble"],
+        answer: 1
+    },
+    {
+        question: "Who scored the fastest century in ODI cricket?",
+        choices: ["AB de Villiers", "Virat Kohli", "Chris Gayle", "Rohit Sharma"],
+        answer: 0
+    },
+    {
+        question: "Which Indian cricketer is known as 'The Wall'?",
+        choices: ["Sachin Tendulkar", "Rahul Dravid", "Sourav Ganguly", "VVS Laxman"],
+        answer: 1
+    },
+    {
+        question: "Where was the first ever Test match played?",
+        choices: ["England", "Australia", "South Africa", "India"],
+        answer: 0
+    }
+];
+
+let currentQuestion = 0;
+let score = 0;
+let selectedChoice = null;
+
+const questionEl = document.getElementById('question');
+const choicesEl = document.getElementById('choices');
+const nextBtn = document.getElementById('nextBtn');
+const resultEl = document.getElementById('result');
+const progressEl = document.getElementById('progress');
+const pointsEl = document.getElementById('points');
+
+function loadQuestion() {
+    selectedChoice = null;
+    questionEl.textContent = quizData[currentQuestion].question;
+    choicesEl.innerHTML = '';
+    resultEl.textContent = '';
+    nextBtn.disabled = true;
+
+    progressEl.textContent = `Question ${currentQuestion + 1} of ${quizData.length}`;
+    pointsEl.textContent = `Score: ${score}`;
+
+    quizData[currentQuestion].choices.forEach((choice, idx) => {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.textContent = choice;
+        btn.className = 'choice-btn';
+        btn.onclick = () => selectChoice(btn, idx);
+        li.appendChild(btn);
+        choicesEl.appendChild(li);
+    });
+}
+
+function selectChoice(btn, idx) {
+    Array.from(document.getElementsByClassName('choice-btn')).forEach(b => b.disabled = true);
+    selectedChoice = idx;
+    nextBtn.disabled = false;
+
+    if (idx === quizData[currentQuestion].answer) {
+        score++;
+        btn.classList.add('correct');
+        resultEl.textContent = 'Correct!';
+        resultEl.style.color = '#4CAF50';
+    } else {
+        btn.classList.add('wrong');
+        const correctBtn = Array.from(document.getElementsByClassName('choice-btn'))[quizData[currentQuestion].answer];
+        correctBtn.classList.add('correct');
+        resultEl.textContent = `Wrong! Correct answer: ${quizData[currentQuestion].choices[quizData[currentQuestion].answer]}`;
+        resultEl.style.color = '#f44336';
+    }
+    pointsEl.textContent = `Score: ${score}`;
+}
+
+nextBtn.onclick = function() {
+    currentQuestion++;
+    if (currentQuestion < quizData.length) {
+        loadQuestion();
+    } else {
+        showResult();
+    }
+};
+
+function showResult() {
+    questionEl.textContent = 'Quiz Completed!';
+    choicesEl.innerHTML = '';
+    nextBtn.style.display = 'none';
+    progressEl.textContent = '';
+    resultEl.innerHTML = `
+        Your score: <strong>${score}</strong> / ${quizData.length}<br>
+        Percentage: <strong>${((score / quizData.length) * 100).toFixed(2)}%</strong><br>
+        <button onclick="restartQuiz()">Restart Quiz</button>
+    `;
+}
+
+function restartQuiz() {
+    currentQuestion = 0;
+    score = 0;
+    nextBtn.style.display = '';
+    loadQuestion();
+}
+
+loadQuestion();

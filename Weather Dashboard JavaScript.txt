@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Weather Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div id="app">
+    <h1>Weather Dashboard</h1>
+    <form id="city-form">
+      <input type="text" id="city-input" placeholder="Enter city name" required>
+      <button type="submit">Add City</button>
+    </form>
+    <div id="favorites"></div>
+    <div id="dashboard"></div>
+    <div id="chart-container">
+      <canvas id="weather-chart"></canvas>
+    </div>
+  </div>
+  <script src="index.js"></script>
+</body>
+</html>
+body {
+  font-family: Arial, sans-serif;
+  background: #f1f1f1;
+}
+
+#app {
+  max-width: 600px;
+  margin: 30px auto;
+  background: #fff;
+  padding: 28px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px #ccc;
+}
+
+h1 {
+  text-align: center;
+}
+
+#city-form {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+#city-input {
+  flex: 1;
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid #aaa;
+}
+
+button {
+  background: #2196f3;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1769aa;
+}
+
+#favorites {
+  margin-bottom: 16px;
+}
+
+.favorite-btn {
+  margin: 0 5px 5px 0;
+  padding: 5px 12px;
+  background: #e3f2fd;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.favorite-btn:hover {
+  background: #bbdefb;
+}
+
+.remove-btn {
+  background: #e57373;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  margin-left: 7px;
+  cursor: pointer;
+  padding: 2px 7px;
+}
+
+#dashboard {
+  margin-bottom: 18px;
+}
+
+.weather-card {
+  background: #f9f9f9;
+  border-radius: 7px;
+  box-shadow: 0 0 5px #eee;
+  padding: 13px;
+  margin-bottom: 10px;
+}
+
+.weather-card h3 {
+  margin: 0 0 6px 0;
+}
+
+#chart-container {
+  margin-top: 18px;
+  background: #e3f2fd;
+  border-radius: 8px;
+  padding: 10px;
+}
+// Insert your OpenWeatherMap API key below:
+const API_KEY = 'YOUR_OPENWEATHERMAP_API_KEY';
+
+const cityForm = document.getElementById('city-form');
+const cityInput = document.getElementById('city-input');
+const favoritesDiv = document.getElementById('favorites');
+const dashboardDiv = document.getElementById('dashboard');
+const chartContainer = document.getElementById('chart-container');
+const chartCanvas = document.getElementById('weather-chart');
+
+let favoriteCities = [];
+let weatherData = {};
+
+function loadFavorites() {
+  favoriteCities = JSON.parse(localStorage.getItem('weatherFavorites') || '[]');
+}
+
+function saveFavorites() {
+  localStorage.setItem('weatherFavorites', JSON.stringify(favoriteCities));
+}
+
+function renderFavorites() {
+  favoritesDiv.innerHTML = "<b>Favorites:</b> ";
+  if (favoriteCities.length === 0) {
+    favoritesDiv.innerHTML += "None";
+    return;
+  }
+  favoriteCities.forEach(city => {
+    const btn = document.createElement('button');
+    btn.textContent = city;
+    btn.className = 'favorite-btn';
+    btn.onclick = () => showCityChart(city);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = '✕';
+    removeBtn.className = 'remove-btn';
+    removeBtn.onclick = (e) => {
+      e.stopPropagation();
+      removeCity(city);
+    };
+
+    btn.appendChild(removeBtn);
+    favoritesDiv.appendChild(btn);
+  });
+}
+
+function removeCity(city) {
+  favoriteCities = favoriteCities.filter(c => c !== city);
+  saveFavorites();
+  renderFavorites();
+  fetchAndRenderDashboard();
+}
+
+cityForm.onsubmit = async (e) => {
+  e.preventDefault();
+  const city = cityInput.value.trim();
+  if (!city) return;
+  if (!favoriteCities.includes(city)) {
+    favoriteCities.push(city);
+    saveFavorites();
+    renderFavorites();
+    fetchAndRenderDashboard();
+  }
+  cityInput.value = '';
+};
+
+// Fetch weather for a city (current + forecast)
+async function fetchWeather(city) {
+  try {
+    // Current weather
+    const currentUrl = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric`;
+    const currentRes = await fetch(currentUrl);
+    if (!currentRes.ok) throw new Error('City not found');
+    const current = await currentRes.json();
+
+    // 5-day forecast (3-hour steps)
+    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric`;
+    const forecastRes = await fetch(forecastUrl);
+    if (!forecastRes.ok) throw new Error('Forecast not available');
+    const forecast = await forecastRes.json();
+
+    return { current, forecast };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+// Render dashboard for all favorite cities
+async function fetchAndRenderDashboard() {
+  dashboardDiv.innerHTML = "Loading...";
+  weatherData = {};
+  let dashboardHtml = '';
+
+  for (const city of favoriteCities) {
+    const data = await fetchWeather(city);
+    weatherData[city] = data;
+
+    if (data.error) {
+      dashboardHtml += `<div class="weather-card"><h3>${city}</h3><span style="color:red;">${data.error}</span></div>`;
+      continue;
+    }
+    const { current } = data;
+    dashboardHtml += `
+      <div class="weather-card">
+        <h3>${current.name}</h3>
+        <div>
+          <img src="https://openweathermap.org/img/wn/${current.weather[0].icon}@2x.png" alt="${current.weather[0].description}" width="48">
+          <b>${Math.round(current.main.temp)}°C</b> &mdash; ${current.weather[0].description}
+        </div>
+        <div>Humidity: ${current.main.humidity}% | Wind: ${current.wind.speed} m/s</div>
+        <button onclick="showCityChart('${current.name}')">Show Trend</button>
+      </div>
+    `;
+  }
+  dashboardDiv.innerHTML = dashboardHtml;
+}
+
+window.showCityChart = function(city) {
+  const data = weatherData[city];
+  if (!data || data.error) {
+    alert('No data for this city!');
+    return;
+  }
+  const { forecast } = data;
+  const labels = [];
+  const temps = [];
+  for (let i = 0; i < forecast.list.length; i += 2) { // every 6 hours
+    const item = forecast.list[i];
+    labels.push(item.dt_txt.slice(5, 16)); // MM-DD HH:mm
+    temps.push(item.main.temp);
+  }
+  renderChart(city, labels, temps);
+};
+
+let chartInstance = null;
+
+function renderChart(city, labels, temps) {
+  chartContainer.style.display = 'block';
+  if (chartInstance) {
+    chartInstance.destroy();
+  }
+  chartInstance = new Chart(chartCanvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: `${city} Temp (°C)`,
+        data: temps,
+        borderColor: '#2196f3',
+        backgroundColor: 'rgba(33,150,243,0.2)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: true },
+        title: { display: true, text: `Temperature Trend for ${city}` }
+      },
+      scales: {
+        y: { beginAtZero: false }
+      }
+    }
+  });
+}
+
+// Initial load
+loadFavorites();
+renderFavorites();
+fetchAndRenderDashboard();
