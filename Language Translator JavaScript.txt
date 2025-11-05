@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Language Translator</title>
+  <link rel="stylesheet" href="lt.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Language Translator</h1>
+
+    <div class="translator-box">
+      <textarea id="inputText" placeholder="Enter text here..."></textarea>
+
+      <div class="controls">
+        <select id="fromLang">
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="hi">Hindi</option>
+          <option value="ta">Tamil</option>
+          <option value="te">Telugu</option>
+          <option value="ja">Japanese</option>
+          <option value="zh">Chinese</option>
+        </select>
+
+        <span>➡️</span>
+
+        <select id="toLang">
+          <option value="hi">Hindi</option>
+          <option value="en">English</option>
+          <option value="fr">French</option>
+          <option value="es">Spanish</option>
+          <option value="de">German</option>
+          <option value="ta">Tamil</option>
+          <option value="te">Telugu</option>
+          <option value="ja">Japanese</option>
+          <option value="zh">Chinese</option>
+        </select>
+      </div>
+
+      <button id="translateBtn">Translate</button>
+
+      <textarea id="outputText" placeholder="Translation will appear here..." readonly></textarea>
+    </div>
+  </div>
+
+  <script src="Translator.js"></script>
+</body>
+</html>
+
+document.getElementById("translateBtn").addEventListener("click", () => {
+  const inputText = document.getElementById("inputText").value.trim();
+  const fromLang = document.getElementById("fromLang").value;
+  const toLang = document.getElementById("toLang").value;
+  const outputText = document.getElementById("outputText");
+
+  if (inputText === "") {
+    outputText.value = "Please enter some text to translate!";
+    return;
+  }
+
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(inputText)}&langpair=${fromLang}|${toLang}`;
+
+  outputText.value = "Translating... ⏳";
+
+  fetch(url)
+    .then(response => response.json())
+    .then(data => {
+      const translated = data.responseData.translatedText;
+      outputText.value = translated;
+    })
+    .catch(() => {
+      outputText.value = "Error: Could not translate text.";
+    });
+});
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(to right, #8360c3, #2ebf91);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+
+.container {
+  background: #fff;
+  border-radius: 15px;
+  padding: 30px;
+  width: 400px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  text-align: center;
+}
+
+h1 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.translator-box {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+textarea {
+  width: 100%;
+  height: 100px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  padding: 10px;
+  font-size: 16px;
+  resize: none;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+select {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+button {
+  background: #2ebf91;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+button:hover {
+  background: #27a380;
+}
