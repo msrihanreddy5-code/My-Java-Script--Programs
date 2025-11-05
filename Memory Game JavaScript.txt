@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory Challenge</title>
+  <link rel="stylesheet" href="t.css">
+</head>
+<body>
+  <div class="game-container">
+    <h1>Memory Challenge</h1>
+    <p class="tagline">Test how sharp your brain is!</p>
+
+    <div class="stats">
+      <span id="moves">Moves: 0</span>
+      <span id="timer">Time: 0s</span>
+      <span id="score">Score: 0</span>
+    </div>
+
+    <div id="game-board" class="game-board"></div>
+
+    <div id="ai-message" class="ai-message"> Let's test your memory</div>
+
+    <button id="restart-btn" class="hidden">Restart Game</button>
+  </div>
+
+  <script src="e.js"></script>
+</body>
+</html>
+
+const gameBoard = document.getElementById("game-board");
+const movesDisplay = document.getElementById("moves");
+const timerDisplay = document.getElementById("timer");
+const scoreDisplay = document.getElementById("score");
+const aiMessage = document.getElementById("ai-message");
+const restartBtn = document.getElementById("restart-btn");
+
+let firstCard, secondCard;
+let hasFlippedCard = false;
+let lockBoard = false;
+let moves = 0;
+let matchedPairs = 0;
+let time = 0;
+let timerInterval;
+
+const icons = ["😊", "😂", "😁", "😒", "👌", "👍", "😉", "😜"];
+let cards = [...icons, ...icons];
+
+function shuffleCards() {
+  cards.sort(() => Math.random() - 0.5);
+}
+
+function createBoard() {
+  shuffleCards();
+  cards.forEach((icon) => {
+    const card = document.createElement("div");
+    card.classList.add("card");
+    card.innerHTML = `
+      <div class="front">${icon}</div>
+      <div class="back">?</div>
+    `;
+    card.addEventListener("click", flipCard);
+    gameBoard.appendChild(card);
+  });
+}
+
+function flipCard() {
+  if (lockBoard || this === firstCard) return;
+
+  this.classList.add("flip");
+
+  if (!hasFlippedCard) {
+    hasFlippedCard = true;
+    firstCard = this;
+    startTimer();
+    return;
+  }
+
+  secondCard = this;
+  checkForMatch();
+}
+
+function checkForMatch() {
+  moves++;
+  movesDisplay.textContent = `Moves: ${moves}`;
+
+  if (moves === 10) {
+    restartBtn.classList.remove("hidden");
+  }
+
+  let isMatch =
+    firstCard.querySelector(".front").textContent ===
+    secondCard.querySelector(".front").textContent;
+
+  isMatch ? disableCards() : unflipCards();
+  aiReact();
+}
+
+function disableCards() {
+  firstCard.removeEventListener("click", flipCard);
+  secondCard.removeEventListener("click", flipCard);
+  matchedPairs++;
+
+  if (matchedPairs === icons.length) {
+    setTimeout(() => gameOver(), 800);
+  }
+
+  resetBoard();
+}
+
+function unflipCards() {
+  lockBoard = true;
+  setTimeout(() => {
+    firstCard.classList.remove("flip");
+    secondCard.classList.remove("flip");
+    resetBoard();
+  }, 800);
+}
+
+function resetBoard() {
+  [hasFlippedCard, lockBoard] = [false, false];
+  [firstCard, secondCard] = [null, null];
+}
+
+function aiReact() {
+  const msg = aiComments[Math.floor(Math.random() * aiComments.length)];
+  aiMessage.textContent = `AI: ${msg}`;
+}
+
+function startTimer() {
+  if (!timerInterval) {
+    timerInterval = setInterval(() => {
+      time++;
+      timerDisplay.textContent = `Time: ${time}s`;
+    }, 1000);
+  }
+}
+
+function calculateScore() {
+  return Math.max(1000 - (moves * 10 + time * 2), 0);
+}
+
+function gameOver() {
+  clearInterval(timerInterval);
+  const finalScore = calculateScore();
+  scoreDisplay.textContent = `Score: ${finalScore}`;
+
+  const overlay = document.createElement("div");
+  overlay.classList.add("game-over-overlay");
+  overlay.innerHTML = `
+    <div class="game-over-box">
+      <h2> Game Over </h2>
+      <p>Your Score: <strong>${finalScore}</strong></p>
+      <p>${finalScore > 800 ? "Impressive" : "Not bad Try again?"}</p>
+      <button id="play-again">Play Again</button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  document.getElementById("play-again").addEventListener("click", () => {
+    overlay.remove();
+    restartGame();
+  });
+}
+
+function restartGame() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  [moves, matchedPairs, time] = [0, 0, 0];
+  gameBoard.innerHTML = "";
+  movesDisplay.textContent = "Moves: 0";
+  timerDisplay.textContent = "Time: 0s";
+  scoreDisplay.textContent = "Score: 0";
+  aiMessage.textContent = "Let's see if you can beat me this time...";
+  restartBtn.classList.add("hidden");
+  createBoard();
+}
+
+restartBtn.addEventListener("click", restartGame);
+createBoard();
+
+body {
+  background: radial-gradient(circle at top, #0a0f1e, #000);
+  color: #00ffcc;
+  font-family: "Poppins", sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden; 
+}
+
+.game-container {
+  text-align: center;
+  width: 90%;
+  max-width: 550px;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+}
+
+h1 {
+  font-size: 2rem;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px #00ffcc;
+  margin: 0;
+}
+
+.tagline {
+  font-size: 0.9rem;
+  color: #66ffe0;
+  margin: 0 0 10px 0;
+}
+
+.stats {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.game-board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+  flex-grow: 1;
+  max-height: 60vh;
+  justify-items: center;
+  align-items: center;
+}
+
+.card {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  position: relative;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition: transform 0.5s;
+}
+
+.card.flip {
+  transform: rotateY(180deg);
+}
+
+.card .front,
+.card .back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  backface-visibility: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  box-shadow: 0 0 10px #00ffcc;
+}
+
+.card .front {
+  transform: rotateY(180deg);
+  background: #001a1a;
+}
+
+.card .back {
+  background: #00ffcc;
+  color: #001f1f;
+}
+
+.ai-message {
+  font-size: 1rem;
+  margin: 10px 0;
+  color: #00ffee;
+}
+
+button {
+  position: absolute;
+  right: 15px;
+  bottom: 15px;
+  background: #00ffcc;
+  color: #001f1f;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+button:hover {
+  background: #00cca3;
+  box-shadow: 0 0 15px #00ffcc;
+}
+
+.hidden {
+  display: none;
+}
+
+.game-over-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.game-over-box {
+  background: #001f1f;
+  color: #00ffcc;
+  border: 2px solid #00ffcc;
+  border-radius: 15px;
+  padding: 30px 40px;
+  text-align: center;
+  box-shadow: 0 0 20px #00ffcc;
+}
+
+.game-over-box h2 {
+  font-size: 2rem;
+  margin-bottom: 15px;
+}
+
+.game-over-box p {
+  font-size: 1rem;
+  margin: 10px 0;
+}
+
+.game-over-box button {
+  background: #00ffcc;
+  color: #001f1f;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 15px;
+  transition: 0.3s;
+}
+
+.game-over-box button:hover {
+  background: #00cca3;
+  box-shadow: 0 0 15px #00ffcc;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
