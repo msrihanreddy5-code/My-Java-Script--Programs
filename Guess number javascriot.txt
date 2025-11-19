@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Number Guessing Game</title>
+    <link rel="stylesheet" href="gam.css">
+</head>
+<body>
+
+    <div class="background"></div>
+
+    <div class="container">
+
+        <h1> Advanced Number Guessing Game</h1>
+
+        <div class="theme-highlight">
+            <label class="theme-switch">
+                <input type="checkbox" id="themeToggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <p class="modeText">Light Mode (Click glowing icon!)</p>
+
+        <h3>Select Difficulty</h3>
+        <select id="difficulty">
+            <option value="50">Easy (1–50)</option>
+            <option value="100" selected>Medium (1–100)</option>
+            <option value="500">Hard (1–500)</option>
+            <option value="custom">Custom</option>
+        </select>
+
+        <input type="number" id="customRange" class="hidden" placeholder="Enter max number">
+
+        <button id="startBtn">Start Game</button>
+
+        <div id="gameArea" class="hidden">
+            <p id="timer"> Time: 0s</p>
+            <p id="score">Score: 0</p>
+
+            <input type="number" id="guessInput" placeholder="Enter your guess">
+            <button id="guessBtn">Guess</button>
+
+            <p id="result"></p>
+
+            <button id="restartBtn" class="hidden restart-btn">Restart Game</button>
+        </div>
+
+    </div>
+
+    <script src="number.js"></script>
+</body>
+</html>
+
+let secretNumber, attempts, maxNumber;
+let timer = 0, timeInterval, score = 0;
+
+const clickSound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_7e5187dfd6.mp3?filename=ui-click-1-81117.mp3");
+const wrongSound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_99477ad533.mp3?filename=error-126627.mp3");
+const correctSound = new Audio("https://cdn.pixabay.com/download/audio/2022/03/15/audio_5a954a4300.mp3?filename=success-1-6297.mp3");
+
+const gameArea = document.getElementById("gameArea");
+const customRange = document.getElementById("customRange");
+const difficultySelect = document.getElementById("difficulty");
+const result = document.getElementById("result");
+const scoreDisplay = document.getElementById("score");
+const timerDisplay = document.getElementById("timer");
+
+difficultySelect.addEventListener("change", () => {
+    customRange.classList.toggle("hidden", difficultySelect.value !== "custom");
+});
+
+
+document.getElementById("startBtn").addEventListener("click", () => {
+    clickSound.play();
+
+    if (difficultySelect.value === "custom") {
+        maxNumber = Number(customRange.value) || 100;
+    } else {
+        maxNumber = Number(difficultySelect.value);
+    }
+
+    secretNumber = Math.floor(Math.random() * maxNumber) + 1;
+    attempts = 0;
+    timer = 0;
+
+    gameArea.classList.remove("hidden");
+    result.innerHTML = "";
+    document.getElementById("guessInput").value = "";
+
+    startTimer();
+});
+
+function startTimer() {
+    clearInterval(timeInterval);
+    timeInterval = setInterval(() => {
+        timer++;
+        timerDisplay.innerHTML = ` Time: ${timer}s`;
+    }, 1000);
+}
+
+document.getElementById("guessBtn").addEventListener("click", () => {
+    clickSound.play();
+
+    let guess = Number(document.getElementById("guessInput").value);
+    attempts++;
+
+    if (!guess) {
+        result.innerHTML = "⚠ Enter a number!";
+        wrongSound.play();
+        return;
+    }
+
+    if (guess > secretNumber) {
+        result.innerHTML = "📉 Too high!";
+        wrongSound.play();
+    } else if (guess < secretNumber) {
+        result.innerHTML = "📈 Too low!";
+        wrongSound.play();
+    } else {
+        correctSound.play();
+        result.innerHTML = ` Correct! Attempts: ${attempts}, Time: ${timer}s`;
+
+        score += Math.max(50 - attempts - Math.floor(timer / 2), 5);
+        scoreDisplay.innerHTML = `⭐ Score: ${score}`;
+
+        clearInterval(timeInterval);
+        document.getElementById("restartBtn").classList.remove("hidden");
+    }
+});
+
+document.getElementById("restartBtn").addEventListener("click", () => {
+    clickSound.play();
+    location.reload();
+});
+
+document.getElementById("themeToggle").addEventListener("change", () => {
+    document.body.classList.toggle("dark-mode");
+    document.querySelector(".modeText").textContent =
+        document.body.classList.contains("dark-mode") ? "Dark Mode" : "Light Mode";
+});
+
+document.getElementById("themeToggle").addEventListener("click", () => {
+    const highlight = document.querySelector(".theme-highlight");
+    if (highlight) highlight.style.display = "none";
+});
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Poppins, Arial;
+}
+
+:root {
+    --bg: #f0f4ff;
+    --text: #222;
+    --card: #ffffffcc;
+    --primary: #007bff;
+    --hover: #0056b3;
+}
+
+.dark-mode {
+    --bg: #0c0c0c;
+    --text: #fff;
+    --card: #1a1a1acc;
+    --primary: #00aaff;
+    --hover: #0080cc;
+}
+
+.background {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #6dd5fa, #2980b9);
+    background-size: 400% 400%;
+    animation: animateBG 12s infinite alternate;
+    z-index: -1;
+}
+
+@keyframes animateBG {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    background: var(--card);
+    padding: 30px;
+    width: 400px;
+    border-radius: 20px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    text-align: center;
+    animation: fadeIn 0.8s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+input, select {
+    padding: 12px;
+    width: 85%;
+    margin-top: 10px;
+    border-radius: 8px;
+    border: 1px solid #aaa;
+    font-size: 16px;
+}
+
+button {
+    width: 90%;
+    padding: 12px;
+    margin-top: 15px;
+    font-size: 18px;
+    border: none;
+    background: var(--primary);
+    color: white;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+button:hover {
+    background: var(--hover);
+    transform: scale(1.05);
+}
+
+#result {
+    margin-top: 20px;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+#timer, #score {
+    font-size: 18px;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.restart-btn {
+    background: #ff5252;
+}
+
+.restart-btn:hover {
+    background: #e00000;
+}
+
+.theme-switch input {
+    display: none;
+}
+
+.slider {
+    width: 50px;
+    height: 24px;
+    background: #ccc;
+    display: inline-block;
+    border-radius: 50px;
+    position: relative;
+    cursor: pointer;
+}
+
+.slider:before {
+    content: "";
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: .3s;
+}
+
+input:checked + .slider {
+    background: #66bb6a;
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+.theme-highlight {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    padding: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 0, 0.25);
+    animation: glow 1.5s infinite;
+}
+
+@keyframes glow {
+    0% { box-shadow: 0 0 5px yellow; }
+    50% { box-shadow: 0 0 20px yellow; }
+    100% { box-shadow: 0 0 5px yellow; }
+}
+
+.hidden {
+    display: none;
+}
